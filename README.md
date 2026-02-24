@@ -1,6 +1,6 @@
 # Awesome Ascend Skills
 
-A comprehensive knowledge base for Huawei Ascend NPU development, structured as distributed Claude Skills.
+A comprehensive knowledge base for Huawei Ascend NPU development, structured as distributed AI Agent Skills.
 
 ---
 
@@ -54,17 +54,28 @@ your-project/
 
 #### OpenCode
 
-OpenCode uses the same Agent Skills format as Claude Code.
+> **Official Documentation**: https://opencode.ai/docs/skills/
 
-**Method 1: Auto-Discovery (Recommended)**
+OpenCode automatically discovers skills from multiple locations.
 
-OpenCode automatically discovers skills in the `.opencode/skills/` directory:
+**Skill Locations (auto-discovered):**
+
+| Location | Scope |
+|----------|-------|
+| `.opencode/skills/<name>/SKILL.md` | Project-level |
+| `~/.config/opencode/skills/<name>/SKILL.md` | User-level (global) |
+| `.claude/skills/<name>/SKILL.md` | Project-level (Claude compatible) |
+| `~/.claude/skills/<name>/SKILL.md` | User-level (Claude compatible) |
+| `.agents/skills/<name>/SKILL.md` | Project-level (Agent standard) |
+| `~/.agents/skills/<name>/SKILL.md` | User-level (Agent standard) |
+
+**Method 1: Project-Local Skills (Recommended)**
 
 ```bash
 # Create skills directory
 mkdir -p .opencode/skills
 
-# Link or copy skills
+# Copy skills
 cp -r /path/to/awesome-ascend-skills/ascend-npu .opencode/skills/
 cp -r /path/to/awesome-ascend-skills/ascend-basic-env .opencode/skills/
 cp -r /path/to/awesome-ascend-skills/ascend-dev .opencode/skills/
@@ -72,107 +83,130 @@ cp -r /path/to/awesome-ascend-skills/ascend-use-cases .opencode/skills/
 cp -r /path/to/awesome-ascend-skills/ascend-utils .opencode/skills/
 ```
 
-**Method 2: Global Skills Directory**
+**Method 2: Global Skills**
 
 ```bash
 # Copy to OpenCode global skills directory
-cp -r ascend-npu ~/.opencode/skills/
-cp -r ascend-basic-env ~/.opencode/skills/
-cp -r ascend-dev ~/.opencode/skills/
+cp -r ascend-npu ~/.config/opencode/skills/
+cp -r ascend-basic-env ~/.config/opencode/skills/
+cp -r ascend-dev ~/.config/opencode/skills/
 ```
 
-#### Codex (GitHub Copilot Chat / VS Code)
-
-Codex uses system prompts and custom instructions.
-
-**Method 1: VS Code Settings**
-
-Add to `.vscode/settings.json`:
-
-```json
-{
-  "github.copilot.chat.codeGeneration.instructions": [
-    {
-      "text": "You are an expert in Huawei Ascend NPU development. Reference the skills in .github/copilot/skills/ when answering questions about CANN, torch-npu, MindSpore, or vLLM Ascend."
-    }
-  ]
-}
-```
-
-Then copy skills:
+**Method 3: Agent Standard Path (Compatible with Codex)**
 
 ```bash
-mkdir -p .github/copilot/skills
-cp -r /path/to/awesome-ascend-skills/ascend-npu .github/copilot/skills/
-cp -r /path/to/awesome-ascend-skills/ascend-basic-env .github/copilot/skills/
-# ... copy other skills
+# Works for both OpenCode and Codex
+cp -r ascend-npu .agents/skills/
+cp -r ascend-basic-env .agents/skills/
+cp -r ascend-dev .agents/skills/
 ```
 
-**Method 2: Prompt Files**
+#### Codex (OpenAI)
 
-Create `.github/copilot/prompts/ascend-npu.prompt.md`:
+> **Official Documentation**: https://developers.openai.com/codex/skills
 
-```markdown
----
-description: Huawei Ascend NPU development expert
----
+Codex uses the Agent Skills standard with progressive disclosure.
 
-# Ascend NPU Development Guide
+**Skill Locations:**
 
-You are an expert in Huawei Ascend NPU development.
+| Location | Scope | Description |
+|----------|-------|-------------|
+| `$CWD/.agents/skills` | REPO | Current working directory |
+| `$REPO_ROOT/.agents/skills` | REPO | Git repository root |
+| `~/.agents/skills` | USER | User's personal folder |
+| `/etc/codex/skills` | ADMIN | System-level shared location |
 
-## Key Resources
+**Method 1: Project-Level Skills (Recommended)**
 
-- CANN Installation: See ascend-basic-env/cann-install/SKILL.md
-- VLLM Deployment: See ascend-dev/frameworks/inference/vllm/SKILL.md
-- Training: See ascend-dev/frameworks/training/
-- Operators: See ascend-dev/operators/
+```bash
+# Create .agents/skills in your project
+mkdir -p .agents/skills
 
-## Best Practices
+# Copy skills
+cp -r /path/to/awesome-ascend-skills/ascend-npu .agents/skills/
+cp -r /path/to/awesome-ascend-skills/ascend-basic-env .agents/skills/
+cp -r /path/to/awesome-ascend-skills/ascend-dev .agents/skills/
+cp -r /path/to/awesome-ascend-skills/ascend-use-cases .agents/skills/
+cp -r /path/to/awesome-ascend-skills/ascend-utils .agents/skills/
+```
 
-1. Always check environment with ascend-utils/scripts/
-2. Follow official documentation for version-specific details
-3. Use docker for consistent environments
+**Method 2: User-Level Skills**
+
+```bash
+# Copy to user's global skills directory
+cp -r ascend-npu ~/.agents/skills/
+cp -r ascend-basic-env ~/.agents/skills/
+cp -r ascend-dev ~/.agents/skills/
+```
+
+**Method 3: Using skill-installer**
+
+```
+$skill-installer install the ascend-npu skill from awesome-ascend-skills
+```
+
+**Configuration (Optional):**
+
+Add to `~/.codex/config.toml` to manage skills:
+
+```toml
+[[skills.config]]
+path = "/path/to/skill/SKILL.md"
+enabled = true
 ```
 
 #### Cursor
 
-Cursor uses `.cursorrules` files and AI rules.
+> **Official Documentation**: https://cursor.com/docs/context/skills
 
-**Method 1: .cursorrules File**
+Cursor automatically discovers skills from multiple directories on startup.
 
-Create `.cursorrules` in your project root:
+**Skill Locations (auto-discovered):**
 
+| Location | Scope |
+|----------|-------|
+| `.cursor/skills/` | Project-level |
+| `.claude/skills/` | Project-level (Claude compatible) |
+| `.codex/skills/` | Project-level (Codex compatible) |
+| `~/.cursor/skills/` | User-level (global) |
+| `~/.claude/skills/` | User-level (Claude compatible) |
+| `~/.codex/skills/` | User-level (Codex compatible) |
+
+**Method 1: Project-Level Skills (Recommended)**
+
+```bash
+# Create .cursor/skills in your project
+mkdir -p .cursor/skills
+
+# Copy skills
+cp -r /path/to/awesome-ascend-skills/ascend-npu .cursor/skills/
+cp -r /path/to/awesome-ascend-skills/ascend-basic-env .cursor/skills/
+cp -r /path/to/awesome-ascend-skills/ascend-dev .cursor/skills/
+cp -r /path/to/awesome-ascend-skills/ascend-use-cases .cursor/skills/
+cp -r /path/to/awesome-ascend-skills/ascend-utils .cursor/skills/
 ```
-You are an AI assistant specialized in Huawei Ascend NPU development.
 
-When users ask about:
-- Environment setup → reference ascend-basic-env/
-- CANN installation → ascend-basic-env/cann-install/
-- VLLM deployment → ascend-dev/frameworks/inference/vllm/
-- Training frameworks → ascend-dev/frameworks/training/
-- Custom operators → ascend-dev/operators/
+**Method 2: User-Level Skills**
 
-Always check the SKILL.md files for detailed instructions.
-
-Official docs:
-- https://www.hiascend.com/document
-- https://docs.vllm.ai/projects/ascend
+```bash
+# Copy to Cursor global skills directory
+cp -r ascend-npu ~/.cursor/skills/
+cp -r ascend-basic-env ~/.cursor/skills/
+cp -r ascend-dev ~/.cursor/skills/
 ```
 
-**Method 2: Cursor Settings**
+**Method 3: Import from GitHub**
 
-In Cursor Settings > AI Rules:
+1. Open **Cursor Settings → Rules**
+2. In the **Project Rules** section, click **Add Rule**
+3. Select **Remote Rule (Github)**
+4. Enter the GitHub repository URL
 
-```
-Context: You have access to Ascend NPU skills at /path/to/awesome-ascend-skills/
+**Viewing Skills in Cursor:**
 
-Instructions:
-1. When user asks about Ascend NPU, load the relevant SKILL.md
-2. Follow the instructions in the skill exactly
-3. Reference official documentation when available
-4. Use scripts/ directory for automation when appropriate
-```
+1. Open **Cursor Settings** (Cmd+Shift+J on Mac, Ctrl+Shift+J on Windows/Linux)
+2. Navigate to **Rules**
+3. Skills appear in the **Agent Decides** section
 
 #### Generic / Custom AI Tools
 
@@ -209,6 +243,90 @@ find /path/to/awesome-ascend-skills -name "SKILL.md" -exec cat {} \; > ascend-kn
 # Import to your AI tool's knowledge base
 ```
 
+---
+
+### Token Usage Estimates
+
+Skills use **progressive disclosure** to manage context efficiently. Here's the estimated token usage:
+
+#### By Loading Stage
+
+| Stage | Content | ~Tokens |
+|-------|---------|---------|
+| **Discovery** | `name` + `description` only | ~50-100 per skill |
+| **Activation** | Full `SKILL.md` content | See skill sizes below |
+| **On-Demand** | `references/` + `scripts/` | Varies by content |
+
+#### Skill Sizes (SKILL.md content)
+
+| Size Category | Byte Range | ~Tokens | Example Skills |
+|---------------|------------|---------|----------------|
+| **XS** | < 300 bytes | ~100-150 | training-cases, inference-cases, operator-cases |
+| **S** | 300-500 bytes | ~150-250 | verl, sglang, triton, mindie, docker-env |
+| **M** | 500-1000 bytes | ~250-500 | cann-install, env-diagnostics, vllm-basic, ascend-npu |
+| **L** | 1000-3000 bytes | ~500-1000 | npu-smi-vnpu/manage, npu-smi-info/advanced |
+| **XL** | 3000-8000 bytes | ~1000-2500 | npu-smi-cert/monitor, npu-smi-info/basic, npu-commands |
+| **XXL** | > 8000 bytes | ~2500+ | skill-creator |
+
+#### Detailed Token Estimates by Skill
+
+<details>
+<summary>Click to expand full skill token list</summary>
+
+| Skill | Bytes | ~Tokens |
+|-------|-------|---------|
+| `ascend-use-cases/training-cases` | 150 | ~60 |
+| `ascend-use-cases/inference-cases` | 165 | ~65 |
+| `ascend-use-cases/operator-cases` | 168 | ~70 |
+| `ascend-dev/frameworks/training/verl` | 186 | ~75 |
+| `ascend-dev/frameworks/inference/sglang` | 191 | ~80 |
+| `ascend-dev/operators/triton` | 191 | ~80 |
+| `ascend-dev/frameworks/inference/mindie` | 193 | ~80 |
+| `ascend-basic-env/testing/docker-env` | 195 | ~80 |
+| `ascend-dev/operators/catlass` | 196 | ~80 |
+| `ascend-dev/operators/tilelang` | 196 | ~80 |
+| `ascend-dev/frameworks/training/mindspore` | 200 | ~80 |
+| `ascend-dev/operators/ascendc` | 200 | ~80 |
+| `ascend-dev/frameworks/inference/vllm/vllm-parallel` | 201 | ~80 |
+| `ascend-dev/frameworks/training/mindspeed` | 206 | ~85 |
+| `ascend-dev/frameworks/inference/vllm/vllm-optimization` | 208 | ~85 |
+| `ascend-basic-env/testing/ascend-dmi` | 223 | ~90 |
+| `ascend-basic-env/testing/hccl-test` | 224 | ~90 |
+| `ascend-basic-env/cann-install` | 247 | ~100 |
+| `ascend-basic-env/env-diagnostics` | 248 | ~100 |
+| `ascend-dev/frameworks/inference/vllm/vllm-basic` | 281 | ~115 |
+| `ascend-dev/frameworks/inference` | 382 | ~155 |
+| `ascend-dev/frameworks` | 405 | ~165 |
+| `ascend-dev/frameworks/training` | 405 | ~165 |
+| `ascend-use-cases` | 452 | ~185 |
+| `ascend-basic-env/testing` | 458 | ~185 |
+| `ascend-dev/operators` | 470 | ~190 |
+| `ascend-utils` | 503 | ~205 |
+| `ascend-dev` | 588 | ~240 |
+| `ascend-basic-env` | 634 | ~260 |
+| `ascend-basic-env/npu-commands/npu-smi-config/clear` | 685 | ~280 |
+| `ascend-npu` | 783 | ~320 |
+| `ascend-basic-env/npu-commands/npu-smi-config/fan` | 809 | ~330 |
+| `ascend-dev/frameworks/inference/vllm` | 860 | ~350 |
+| `ascend-basic-env/npu-commands/npu-smi-upgrade/workflow` | 865 | ~350 |
+| `ascend-basic-env/npu-commands/npu-smi-upgrade/components` | 938 | ~380 |
+| `ascend-basic-env/npu-commands/npu-smi-config/modes` | 958 | ~390 |
+| `ascend-basic-env/npu-commands/npu-smi-config/system` | 968 | ~390 |
+| `ascend-basic-env/npu-commands/npu-smi-config/thresholds` | 974 | ~400 |
+| `ascend-basic-env/npu-commands/npu-smi-vnpu/query` | 1201 | ~490 |
+| `ascend-basic-env/npu-commands/npu-smi-cert/manage` | 1284 | ~520 |
+| `ascend-basic-env/npu-commands/npu-smi-cert/query` | 1385 | ~560 |
+| `ascend-basic-env/npu-commands/npu-smi-vnpu/manage` | 1520 | ~620 |
+| `ascend-basic-env/npu-commands/npu-smi-info/advanced` | 2538 | ~1030 |
+| `ascend-basic-env/npu-commands/npu-smi-cert/monitor` | 3083 | ~1250 |
+| `ascend-basic-env/npu-commands/npu-smi-info/basic` | 4824 | ~1960 |
+| `ascend-basic-env/npu-commands` | 7219 | ~2930 |
+| `skill-creator` | 18086 | ~7350 |
+
+</details>
+
+---
+
 ### How Skills Work
 
 Once installed, skills are **automatically activated** based on:
@@ -216,7 +334,7 @@ Once installed, skills are **automatically activated** based on:
 1. **Description matching**: The `description` field in each SKILL.md contains keywords
 2. **Context awareness**: Skills trigger when user queries match the description
 3. **Progressive loading**: 
-   - Only `name` and `description` loaded initially (~100 tokens)
+   - Only `name` and `description` loaded initially (~50-100 tokens)
    - Full `SKILL.md` loaded when triggered
    - `references/` and `scripts/` loaded on demand
 
