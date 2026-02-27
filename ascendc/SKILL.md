@@ -515,7 +515,7 @@ Although this skill example doesn't expand all files, the agent should follow th
      - 将关键维度（如 N/C/H/W）记录到 tiling 结构，供 AscendC kernel 使用。
 
 5. **在 op_kernel 中保持命名与接口一致**
-   - tiling 结构体（如 `MoeInitRoutingGroupedMatmulGradTilingData`）的字段命名，应能从 JSON / 算子语义直接对应过来，例如 `totalLength`, `tileNum`。
+   - tiling 结构体（如 `CustomOpTilingData`）的字段命名，应能从 JSON / 算子语义直接对应过来，例如 `totalLength`, `tileNum`。
    - AscendC kernel 中的 GM tensor 命名（如 `gmExpandedX`, `gmWeight`, `gmGradY`, `gmGradX`, `gmGradWeight`）建议与 JSON 的 `name` 一致或做简单可读映射，避免 “x1/x2/y” 这种含义不清的名称。
 
 6. **通用注意事项**
