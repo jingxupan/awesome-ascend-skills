@@ -1,6 +1,6 @@
 ---
 name: ascendc
-description: Guides the agent to develop AscendC transformer GMM-style custom ops (such as grouped_matmul_finalize_routing) and their CANN aclnn examples by following existing patterns under ops-transformer/gmm and attention/softmax_ops/examples. Use when adding or modifying these ops, their kernels, tiling/infershape logic, or CANN API examples.
+description: Guides the agent to develop AscendC transformer GMM-style custom ops (such as grouped_matmul_finalize_routing) and their CANN aclnn examples by following existing patterns under ops-transformer/gmm and attention/example_op/examples. Use when adding or modifying these ops, their kernels, tiling/infershape logic, or CANN API examples.
 keywords:
     - ascend
     - ascendc
@@ -74,7 +74,13 @@ Subsequent sections will detail what to do in each step and which details to pay
   - Graph definition: `ops-transformer/moe/moe_init_routing/op_host/moe_init_routing_def.cpp`
   - CANN API example: `ops-transformer/moe/moe_init_routing/examples/test_aclnn_moe_init_routing.cpp`
 - General CANN API Example Reference:
-  - `ops-transformer/attention/softmax_ops/examples/test_aclnn_softmax_ops.cpp`
+  - `ops-transformer/examples/add_example/examples/test_aclnn_add_example.cpp`
+- Type / Format Enum Reference (CANN):
+  - 详见本 skill 下的 **references/type_format_reference.md**。
+  - Data types: `enum DataType` in `graph/types.h` (e.g. lines 80–123) under CANN install path, such as
+    `/usr/local/Ascend/cann-8.5.0-beta.1/aarch64-linux/include/graph/types.h`
+  - Tensor formats: `enum Format` in the same `graph/types.h` (e.g. lines 189–247)
+  - **op_host 定义约定**：每个输入/输出的 `.DataType({...})`、`.Format({...})`、`.UnknownShapeFormat({...})` 三个列表的**元素个数必须相同**（见 references/type_format_reference.md）。
 
 ### Behavioral Guidelines
 
@@ -455,11 +461,77 @@ Although this skill example doesn't expand all files, the agent should follow th
      - Graph attributes/shapes correctly map to `tiling->...` fields accessed in kernel
      - Deterministic switches, workspace size, coreNum/parallNum calculation logic maintain consistent style
 
+### 4.1 使用 JSON + `graph/types.h` 驱动 op_host/op_kernel 对齐（通用流程）
+
+在很多自定义算子工程中，会存在一个用于描述算子接口的 JSON（例如 `moe_init_routing_grouped_matmul_grad.json`），其中列出每个输入/输出的:
+
+- name（张量名称）
+- param_type（required / optional）
+- type（如 `fp16` / `bf16` / `float` / `int32`）
+- format（如 `ND`）
+
+为了保证 `op_host` / `infershape` / `tiling` / `op_kernel` 一致，建议按如下通用步骤处理：
+
+1. **从 JSON 提取接口信息**
+   - 读取 JSON 中的:
+     - `input_desc[i].name` / `output_desc[j].name`
+     - `input_desc[i].type` / `output_desc[j].type`
+     - `input_desc[i].format` / `output_desc[j].format`
+   - 明确哪些张量是数据（`fp16`/`bf16`/`float` 等），哪些是索引/标量（`int32` 等）。
+
+2. **在 `op_host/*_def.cpp` 中映射 DataType / Format**
+   - DataType 必须使用 `ge::DataType` 枚举，参考 CANN 头文件:
+     - `ge::DT_FLOAT16`, `ge::DT_BF16`, `ge::DT_FLOAT`, `ge::DT_INT32`, ...
+       这些可以在 `graph/types.h` 的 `enum DataType` 中找到（如 \(L80\text{-}L123\)）。
+   - Format 必须使用 `ge::Format` 枚举，参考:
+     - `ge::FORMAT_ND`, `ge::FORMAT_NCHW`, `ge::FORMAT_NHWC`, ...
+       这些可以在 `graph/types.h` 的 `enum Format` 中找到（如 \(L189\text{-}L247\)）。
+   - 通用映射示例（JSON → C++）:
+     - `type: "fp16"` → `ge::DT_FLOAT16`
+     - `type: "bf16"` → `ge::DT_BF16`
+     - `type: "float"` → `ge::DT_FLOAT`
+     - `type: "int32"` → `ge::DT_INT32`
+     - `format: "ND"` → `ge::FORMAT_ND`
+   - 在 `Input("xxx")` / `Output("yyy")` 中：
+     - `.DataType({ ... })` 的内容严格来源于 JSON 中的 `type` 列表（按需求去重即可）。
+     - `.Format({ ... })` / `.UnknownShapeFormat({ ... })` 一般与 JSON 的 `format` 对齐（多数场景直接用 `FORMAT_ND`）。
+
+3. **在 infershape 中对齐 shape 关系**
+   - 使用 JSON 中的语义决定输出 shape 与哪个输入 shape 对齐，例如：
+     - 梯度算子中 `grad_x` 通常与其对应前向输入 `x` 同 shape；
+     - `grad_weight` 与 `weight` 同 shape。
+   - 在 `*_infershape.cpp` 中：
+     - 通过 `context->GetInputShape(index)` / `GetOutputShape(index)` 获取形状。
+     - 明确索引常量（如 `IDX_EXPANDED_X`, `IDX_WEIGHT`, `IDX_GRAD_X`, `IDX_GRAD_WEIGHT`），并保持与 JSON / `op_host` 输入输出顺序一致。
+     - 遍历维度拷贝：`SetDimNum` + `SetDim(i, ...)`，逻辑上保证“谁等于谁”与 JSON 的设计一致。
+
+4. **在 tiling 中使用 JSON + types.h 做一致性校验**
+   - 从 `TilingContext` 中获取某个关键输入（通常是主数据张量，如 `x` 或 `expanded_x`）的 shape 与 dtype：
+     - 使用 `context->GetInputShape(idx)->GetStorageShape()` 作为 tiling 参考 shape。
+     - 使用 `context->GetInputDesc(idx)->GetDataType()` 获取真实 dtype。
+   - 根据 JSON 中的 `type` 列表构造支持集合，例如：
+     - 若 JSON 仅包含 `["fp16","bf16","float"]`，则 tiling 中应只允许：
+       `const std::set<ge::DataType> supportedDtype = {ge::DT_FLOAT16, ge::DT_BF16, ge::DT_FLOAT};`
+   - shape 维度约束（如必须是 4D）应与内核实现的假设一致：
+     - 检查 `GetDimNum()`，不符则返回 `GRAPH_FAILED` 并打印清晰错误。
+     - 将关键维度（如 N/C/H/W）记录到 tiling 结构，供 AscendC kernel 使用。
+
+5. **在 op_kernel 中保持命名与接口一致**
+   - tiling 结构体（如 `CustomOpTilingData`）的字段命名，应能从 JSON / 算子语义直接对应过来，例如 `totalLength`, `tileNum`。
+   - AscendC kernel 中的 GM tensor 命名（如 `gmExpandedX`, `gmWeight`, `gmGradY`, `gmGradX`, `gmGradWeight`）建议与 JSON 的 `name` 一致或做简单可读映射，避免 “x1/x2/y” 这种含义不清的名称。
+
+6. **通用注意事项**
+   - **不要手写随意的 DataType / Format 枚举值**，优先从 `graph/types.h` 中查找并复制，确保与当前 CANN 版本兼容。
+   - 当 JSON 中出现新类型（例如 `int8`、`bool`、`float8` 等）时：
+     - 先在 `graph/types.h` 中确认是否存在对应的 `ge::DT_*`；
+     - 确认算子语义与内核实现是否真的支持该类型，再加入 `DataType` 列表和 tiling 校验。
+   - 若 JSON 与现有 `op_host` / `infershape` / `tiling` 存在冲突，以**内核实现能力为上限**，在此基础上尽量向 JSON 靠拢，并在注释中标明差异原因。
+
 ---
 
 ## Step 5: CANN aclnn Examples (examples)
 
-Refer to `test_aclnn_softmax_ops.cpp`, the pattern is as follows:
+Refer to `test_aclnn_example_op.cpp`, the pattern is as follows:
 
 1. **Common Utility Functions**
    - `GetShapeSize`: calculates product of shape dimensions
@@ -492,7 +564,7 @@ Refer to `test_aclnn_softmax_ops.cpp`, the pattern is as follows:
 ### Agent Key Points
 
 - When creating new `aclnn_*` examples:
-  - **Completely copy the structure of `test_aclnn_softmax_ops.cpp`**, then modify:
+  - **Completely copy the structure of `test_aclnn_example_op.cpp`**, then modify:
     - Header includes (`aclnnop/aclnn_xxx.h`)
     - Number of tensors, shapes, dtypes, and fill data
     - Function names and parameter lists for `aclnnXxxGetWorkspaceSize` / `aclnnXxx`
@@ -538,7 +610,80 @@ If Python tests exist in the project (e.g., `op-plugin/test/test_custom_ops/test
   2. Copy `*_def.cpp`, rename and modify interface, adjust inputs/attributes
   3. Copy the core class from `op_kernel/grouped_matmul_finalize_routing.h`, adjust GM tensors and dequantization flow according to new requirements
   4. Refer to related tiling/infershape files to ensure correct parameter mapping from Graph to kernel
-  5. Refer to `test_aclnn_softmax_ops.cpp` to write a new `aclnn` example, and supplement unit tests if needed
+  5. Refer to `test_aclnn_example_op.cpp` to write a new `aclnn` example, and supplement unit tests if needed
+
+---
+
+## Operator Project Generation (genop)
+
+### Overview
+
+The `genop` functionality is a tool provided in the `ops-transformer` project that allows users to quickly create the initial directory structure for a new operator. It uses a template-based approach to generate all the necessary files and directories for a new operator project.
+
+### How to Use genop
+
+To create a new operator project, use the following command in the `ops-transformer` directory:
+
+```bash
+bash build.sh --genop=op_class/op_name
+```
+
+Where:
+- `op_class` is the category of the operator (e.g., `gmm`, `moe`, `ffn`)
+- `op_name` is the name of the new operator (e.g., `my_custom_op`)
+
+### Example Usage
+
+```bash
+bash build.sh --genop=gmm/my_custom_gmm_op
+```
+
+This command will create a new directory structure under `gmm/my_custom_gmm_op` with all the necessary files for a new GMM operator.
+
+### What genop Generates
+
+The `genop` tool generates the following structure for a new operator:
+
+1. **Directory Structure**:
+   - `op_host/`: Contains operator definition, tiling, and infershape logic
+   - `op_kernel/`: Contains AscendC kernel implementation
+   - `examples/`: Contains CANN API usage examples
+   - `CMakeLists.txt`: Build configuration for the operator
+
+2. **Key Files**:
+   - `op_host/*_def.cpp`: Operator definition with input/output/attribute declarations
+   - `op_host/*_tiling.cpp`: Tiling and scheduling logic
+   - `op_kernel/*.h`: AscendC kernel implementation
+   - `examples/test_aclnn_*.cpp`: CANN API usage example
+
+### Customization After Generation
+
+After generating the operator project with `genop`, you need to:
+
+1. **Modify the operator definition** in `op_host/*_def.cpp`:
+   - Update input/output parameters and data types
+   - Adjust attributes and their default values
+   - Configure AICore settings if needed
+
+2. **Implement the kernel logic** in `op_kernel/*.h`:
+   - Add the actual computation logic
+   - Handle different data types and quantization modes
+   - Optimize for performance
+
+3. **Update tiling logic** in `op_host/*_tiling.cpp`:
+   - Adjust tiling parameters for optimal performance
+   - Handle different input shapes and configurations
+
+4. **Write or update examples** in `examples/`:
+   - Create test cases for the new operator
+   - Verify functionality with different input shapes
+
+### Benefits of Using genop
+
+- **Saves time**: Automatically creates the entire directory structure and boilerplate code
+- **Ensures consistency**: Follows the same patterns as existing operators
+- **Reduces errors**: Minimizes manual errors when setting up a new operator project
+- **Simplifies onboarding**: Makes it easier for new developers to create operators
 
 ---
 
