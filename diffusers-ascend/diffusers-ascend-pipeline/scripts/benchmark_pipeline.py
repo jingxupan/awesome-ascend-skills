@@ -64,9 +64,11 @@ def run_benchmark(args):
         pipe = pipe.to(args.device)
         gen_device = args.device
 
-    if args.attention_slicing:
+    if args.attention_slicing and hasattr(pipe, "enable_attention_slicing"):
         pipe.enable_attention_slicing()
-    if hasattr(pipe, "enable_vae_tiling"):
+    if args.vae_slicing and hasattr(pipe, "enable_vae_slicing"):
+        pipe.enable_vae_slicing()
+    if args.vae_tiling and hasattr(pipe, "enable_vae_tiling"):
         pipe.enable_vae_tiling()
 
     # Reset memory stats
@@ -275,6 +277,8 @@ def main():
     parser.add_argument("--pipeline-class", type=str, default=None)
 
     parser.add_argument("--attention-slicing", action="store_true")
+    parser.add_argument("--vae-slicing", action="store_true")
+    parser.add_argument("--vae-tiling", action="store_true")
     parser.add_argument("--cpu-offload", action="store_true")
 
     parser.add_argument(

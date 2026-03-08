@@ -92,9 +92,12 @@ def load_lora(pipe, args):
         return pipe
 
     print(f"Loading LoRA from: {args.lora}")
-    pipe.load_lora_weights(args.lora, adapter_name="user_lora")
-    pipe.set_adapters(["user_lora"], adapter_weights=[args.lora_scale])
-    print(f"LoRA loaded (scale={args.lora_scale})")
+    try:
+        pipe.load_lora_weights(args.lora, adapter_name="user_lora")
+        pipe.set_adapters(["user_lora"], adapter_weights=[args.lora_scale])
+        print(f"LoRA loaded (scale={args.lora_scale})")
+    except Exception as e:
+        print(f"Warning: failed to load LoRA '{args.lora}': {e}", file=sys.stderr)
     return pipe
 
 

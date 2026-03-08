@@ -20,7 +20,7 @@ def check_torch() -> Tuple[bool, str]:
         version = torch.__version__
         parts = version.split(".")[:2]
         major, minor = int(parts[0]), int(parts[1])
-        if major >= 2 and minor >= 1:
+        if major > 2 or (major == 2 and minor >= 1):
             return True, f"torch {version}"
         return False, f"torch {version} (requires >= 2.1)"
     except ImportError:
@@ -49,6 +49,16 @@ def check_diffusers() -> Tuple[bool, str]:
         return False, f"diffusers {version} (requires >= 0.28)"
     except ImportError:
         return False, "diffusers not installed"
+
+
+def check_transformers() -> Tuple[bool, str]:
+    """Check Transformers installation."""
+    try:
+        import transformers
+
+        return True, f"transformers {transformers.__version__}"
+    except ImportError:
+        return False, "transformers not installed"
 
 
 def check_npu_available(device: str) -> Tuple[bool, str]:
@@ -95,7 +105,12 @@ def check_npu_memory(device: str, min_memory_gb: float = 16) -> Tuple[bool, str]
 
 
 def check_model_weights(model_path: str) -> Tuple[bool, str]:
-    """Check model weight directory integrity."""
+    """Check model weight directory integrity.
+
+    Expects `model_index.json` with component keys (e.g. transformer, vae,
+    tokenizer) mapped to `[library, class_name]`, and each component directory
+    to contain at least one valid config file.
+    """
     if not model_path:
         return True, "No model path specified (skipped)"
 
@@ -206,6 +221,7 @@ def main():
         ("PyTorch", lambda: check_torch()),
         ("torch_npu", lambda: check_torch_npu()),
         ("Diffusers", lambda: check_diffusers()),
+        ("Transformers", lambda: check_transformers()),
         ("NPU availability", lambda: check_npu_available(args.device)),
         ("NPU memory", lambda: check_npu_memory(args.device, args.min_memory)),
         ("Model weights", lambda: check_model_weights(args.model)),
