@@ -205,10 +205,11 @@ python convert_ckpt.py \
     --load-dir ./model_weights/qwen25_7b_mcore/ \
     --save-dir ./model_from_hf/Qwen2.5-7B-Instruct/ \
     --tokenizer-model ./model_from_hf/Qwen2.5-7B-Instruct/tokenizer.json \
+    --model-type-hf llama2 \
     --params-dtype bf16
 ```
 
-> MG→HF 时 TP 和 PP **必须设为 1**。输出在 `--save-dir` 下的 `mg2hf/` 子目录。
+> MG→HF 时使用 v1 需设 TP=PP=1；v2 无需设置并行参数。输出在 `--save-dir` 下的 `mg2hf/` 子目录。
 
 ## 阶段间数据流转
 
@@ -248,9 +249,9 @@ model_from_hf/.../mg2hf/                 ← Step 8 输出
 
 | 模型 | `--model-type-hf` | `--add-qkv-bias` | `--num-query-groups` | 层数 |
 |------|-------------------|:-----------------:|:--------------------:|:----:|
-| Qwen2.5-7B | `llama2` | 是 | 4 | 32 |
+| Qwen2.5-7B | `llama2` | 是 | 4 | 28 |
 | Qwen2.5-72B | `llama2` | 是 | 8 | 80 |
-| Qwen3-8B | `qwen` | 是 | 8 | 36 |
+| Qwen3-8B | `qwen3` | 否 | 8 | 36 |
 | LLaMA-3-8B | `llama2` | 否 | 8 | 32 |
 | LLaMA-3-70B | `llama2` | 否 | 8 | 80 |
 | DeepSeek-7B | `llama2` | 否 | 32 | 32 |
@@ -301,7 +302,6 @@ export HCCL_CONNECT_TIMEOUT=1800
 - [mindspeed-llm-data-prep](../mindspeed-llm-data-prep/SKILL.md) - Phase 4: 数据预处理
 - [mindspeed-llm-weight-prep](../mindspeed-llm-weight-prep/SKILL.md) - Phase 3/8: 权重转换
 - [mindspeed-llm-training](../mindspeed-llm-training/SKILL.md) - Phase 5: 训练启动
-- [vllm-ascend](../../vllm-ascend/SKILL.md) - 训练后推理部署
 
 ## 参考资源
 

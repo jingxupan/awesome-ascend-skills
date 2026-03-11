@@ -52,10 +52,11 @@ python convert_ckpt.py \
     --load-dir ./model_weights/qwen25_7b_mcore/ \
     --save-dir ./model_from_hf/Qwen2.5-7B-Instruct/ \
     --tokenizer-model ./model_from_hf/Qwen2.5-7B-Instruct/tokenizer.json \
+    --model-type-hf llama2 \
     --params-dtype bf16
 ```
 
-> MG→HF 时 TP 和 PP **必须设为 1**（HF 格式不支持并行切分）。输出保存在 `--save-dir` 下的 `mg2hf/` 子目录。
+> MG→HF 时使用 v1 需设 TP=PP=1；v2 无需设置并行参数（自动处理）。v1 的 `--save-dir` 必须指向原始 HF 模型路径（含 config.json 和 tokenizer）。输出保存在 `--save-dir` 下的 `mg2hf/` 子目录。
 
 ## 转换方向
 
@@ -79,7 +80,7 @@ python convert_ckpt.py \
 | `--save-dir` | 输出路径 | 是 |
 | `--model-type-hf` | HF 模型类型 | 否（v1 默认 `llama2`，v2 默认 `qwen3`） |
 | `--tokenizer-model` | 分词器文件路径 | 是 |
-| `--params-dtype` | 权重精度：`fp16`、`bf16` | 是（仅 v2） |
+| `--params-dtype` | 权重精度：`fp16`、`bf16` | 是（仅 v1） |
 | `--add-qkv-bias` | 添加 QKV 偏置（部分模型需要） | 视模型而定 |
 
 ## TP/PP 配置规则
@@ -88,7 +89,7 @@ python convert_ckpt.py \
 |------|------|
 | TP × PP ≤ NPU 数量 | 并行度不能超过可用 NPU |
 | 层数可被 PP 整除 | 否则需使用 `--num-layer-list` 动态分配 |
-| MG→HF 时 TP=PP=1 | HF 格式不支持并行切分 |
+| MG→HF 时 v1 需 TP=PP=1 | v2 无需设置（自动处理） |
 | 训练时 TP/PP 必须匹配 | 转换时的 TP/PP 必须与训练脚本一致 |
 
 ### 动态 Pipeline 并行

@@ -14,7 +14,7 @@
 | `--save-dir` | 输出路径 | 必需 |
 | `--model-type-hf` | HF 模型类型 | `llama2` |
 | `--tokenizer-model` | 分词器路径 | 必需 |
-| `--params-dtype` | 权重精度 | 无（推荐 `bf16`） |
+| `--params-dtype` | 权重精度（v1 必需） | 无（推荐 `bf16`） |
 
 ### 并行参数
 
@@ -150,7 +150,7 @@ python convert_ckpt.py \
 - [ ] 验证模型层数可被 PP 整除（否则用 `--num-layer-list`）
 - [ ] 匹配分词器格式（`.model`、`.json`、`.tiktoken`）
 - [ ] HF→MG 时添加 `--use-mcore-models`（v1）
-- [ ] MG→HF 时设 TP=PP=1
+- [ ] MG→HF 时：v1 设 TP=PP=1，v2 无需设置并行参数
 - [ ] LoRA 的 rank/alpha/target-modules 与训练时一致
 - [ ] 大模型（TB 级）用 v2
 - [ ] 不要混用 v1 和 v2

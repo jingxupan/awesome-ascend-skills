@@ -11,7 +11,7 @@ source /usr/local/Ascend/cann/set_env.sh
 # CANN 8.0.x - 8.3.x（旧路径）
 source /usr/local/Ascend/ascend-toolkit/set_env.sh
 
-# ATB 加速库（如可用）
+# ATB 加速库
 source /usr/local/Ascend/nnal/atb/set_env.sh
 ```
 
@@ -19,13 +19,10 @@ source /usr/local/Ascend/nnal/atb/set_env.sh
 
 | CANN | PyTorch | torch_npu | Python | Megatron-LM | MindSpeed |
 |------|---------|-----------|--------|-------------|-----------|
-| 8.5.0 | 2.7.1 | 2.7.1 | 3.10-3.11 | core_v0.12.1 | master |
-| 8.3.RC1 | 2.6.0 | 2.6.0.post3 | 3.9-3.11 | core_v0.8.0 | master |
-| 8.0.RC3 | 2.5.1 | 2.5.1 | 3.9-3.11 | core_v0.8.0 | master |
-| 8.0.RC2 | 2.4.0 | 2.4.0 | 3.8-3.11 | core_v0.6.0 | master |
-| 8.0.RC1 | 2.1.0 | 2.1.0.post8 | 3.8-3.10 | core_r0.6.0 | master |
+| 8.5.0 | 2.7.1 | 2.7.1rc1 | 3.10 | core_v0.12.1 | master |
 
-> 查看 CANN 版本：`cat /usr/local/Ascend/ascend-toolkit/latest/aarch64-linux/ascend_toolkit_install.info`
+> 以上为当前 master 分支版本。历史版本请查阅 [官方安装文档](https://gitcode.com/ascend/MindSpeed-LLM/blob/master/docs/zh/install_guide.md)。
+> 查看 CANN 版本：`cat /usr/local/Ascend/cann/latest/aarch64-linux/ascend_toolkit_install.info`（CANN 8.5.0+）或 `cat /usr/local/Ascend/ascend-toolkit/latest/aarch64-linux/ascend_toolkit_install.info`（旧版）。
 
 ## 安装步骤详解
 
@@ -40,7 +37,7 @@ pip install torch==2.7.1 --index-url https://download.pytorch.org/whl/cpu
 ### 2. torch_npu 安装
 
 ```bash
-pip install torch_npu==2.7.1
+pip install torch_npu==2.7.1rc1
 ```
 
 常见缺失依赖（CANN 容器可能不含）：
@@ -82,7 +79,7 @@ pip install -r requirements.txt
 
 | 镜像 | 说明 |
 |------|------|
-| `ascendhub/cann:8.5.0-910b-ubuntu22.04-py3.11` | Ascend 910B，CANN 8.5.0 |
+| `ascendhub/cann:8.5.0-910b-ubuntu22.04-py3.10` | Ascend 910B，CANN 8.5.0 |
 | `ascendhub/cann:8.3.RC1-910b-ubuntu22.04-py3.10` | Ascend 910B，CANN 8.3.RC1 |
 
 镜像仓库前缀：`swr.cn-south-1.myhuaweicloud.com/`
@@ -120,7 +117,7 @@ source /usr/local/Ascend/ascend-toolkit/set_env.sh
 ### pip 安装超时
 
 ```bash
-pip install --timeout 300 -i https://pypi.tuna.tsinghua.edu.cn/simple torch_npu==2.7.1
+pip install --timeout 300 -i https://pypi.tuna.tsinghua.edu.cn/simple torch_npu==2.7.1rc1
 ```
 
 ### Megatron-LM 分支找不到

@@ -200,6 +200,7 @@
 | `--qlora-nf4` | 权重转换时使用 NF4 量化 |
 
 > QLoRA 使用 4-bit 量化基础模型 + LoRA 适配器，显存占用约为 LoRA 的 35%。
+> **注意**：QLoRA 不支持 `--lora-fusion`，开启无性能收益。
 
 ## DPO 偏好对齐
 
@@ -218,8 +219,8 @@
 | 变量 | 推荐值 | 说明 |
 |------|--------|------|
 | `CUDA_DEVICE_MAX_CONNECTIONS` | `1` | 必需 |
-| `HCCL_CONNECT_TIMEOUT` | `1800` | 大模型/多机超时 |
-| `ASCEND_LAUNCH_BLOCKING` | `0` | 异步模式（性能） |
+| `HCCL_CONNECT_TIMEOUT` | `1800` | HCCL 连接超时秒数（默认 120） |
+| `ASCEND_LAUNCH_BLOCKING` | `0` | 0=异步（性能好，内存消耗高，有 OOM 风险）；1=同步（调试用，性能差） |
 | `PYTORCH_NPU_ALLOC_CONF` | `expandable_segments:True` | 减少内存碎片 |
 | `TASK_QUEUE_ENABLE` | `2` | 任务队列优化 |
 | `COMBINED_ENABLE` | `1` | 相邻算子融合 |

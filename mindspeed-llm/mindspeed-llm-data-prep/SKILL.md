@@ -42,6 +42,8 @@ python preprocess_data.py \
     --tokenizer-name-or-path ./model_from_hf/Qwen2.5-7B/ \
     --output-prefix ./pretrain_dataset/data \
     --tokenizer-type PretrainedFromHF \
+    --handler-name GeneralPretrainHandler \
+    --json-keys text \
     --workers 4
 ```
 
@@ -52,7 +54,8 @@ python preprocess_data.py \
 | `GeneralPretrainHandler` | `{"text": "..."}` | 预训练 |
 | `AlpacaStyleInstructionHandler` | `{"instruction": "...", "output": "..."}` | 单轮指令微调 |
 | `SharegptStyleInstructionHandler` | `{"conversations": [...]}` | 多轮对话微调 |
-| `AlpacaStylePairwiseHandler` | `{"instruction": "...", "chosen": "...", "rejected": "..."}` | DPO 偏好对齐 |
+| `AlpacaStylePairwiseHandler` | `{"question": "...", "chosen": "...", "rejected": "..."}` | DPO 偏好对齐（Alpaca 风格） |
+| `SharegptStylePairwiseHandler` | `{"conversations": [...], "chosen": "...", "rejected": "..."}` | DPO 偏好对齐（ShareGPT 风格） |
 
 ## 输入数据格式
 
@@ -87,7 +90,8 @@ python preprocess_data.py \
 
 ```json
 {
-    "instruction": "解释什么是机器学习",
+    "system": "You are a helpful assistant.",
+    "question": "解释什么是机器学习",
     "chosen": "机器学习是人工智能的一个子领域...",
     "rejected": "机器学习就是让机器学习。"
 }
@@ -99,7 +103,7 @@ python preprocess_data.py \
 {"text": "这是一段用于预训练的长文本..."}
 ```
 
-支持 `.jsonl`、`.json`、`.parquet` 输入格式。
+支持 `.jsonl`、`.json`、`.parquet`、`.csv`、`.txt`、`.arrow` 输入格式。
 
 ## 关键参数
 
@@ -110,7 +114,9 @@ python preprocess_data.py \
 | `--tokenizer-name-or-path` | 分词器路径（HF 模型目录） | `./model_from_hf/Qwen2.5-7B-Instruct/` |
 | `--tokenizer-type` | 分词器类型 | `PretrainedFromHF` |
 | `--handler-name` | 数据处理器 | `AlpacaStyleInstructionHandler` |
-| `--prompt-type` | 对话模板类型 | `qwen`、`qwen25`、`llama3`、`chatglm4` |
+| `--prompt-type` | 对话模板类型 | `qwen`、`llama3`、`glm4` |
+| `--json-keys` | 预训练文本字段名 | `text`（预训练数据必需） |
+| `--map-keys` | 字段映射（非标准数据格式） | `'{"prompt":"question"}'` |
 | `--workers` | 并行处理线程数 | `4` |
 | `--seq-length` | 序列长度（打包时使用） | `4096` |
 | `--log-interval` | 日志打印间隔 | `1000` |
@@ -120,12 +126,15 @@ python preprocess_data.py \
 | 模板名 | 适用模型 |
 |--------|---------|
 | `qwen` | Qwen、Qwen2.5 |
-| `qwen25` | Qwen2.5（替代格式） |
+| `qwen3` | Qwen3 |
 | `llama3` | LLaMA 3/3.1 |
-| `chatglm4` | ChatGLM4 |
+| `llama2` | LLaMA 2 |
+| `glm4` | GLM-4 |
 | `deepseek3` | DeepSeek-V3 |
+| `deepseek2` | DeepSeek-V2 |
 | `baichuan2` | Baichuan2 |
 | `mistral` | Mistral |
+| `chatml` | ChatML 通用格式 |
 
 ## 输出文件结构
 
@@ -139,11 +148,22 @@ python preprocess_data.py \
 <prefix>_packed_attention_mask_document.bin / .idx
 ```
 
+### Pairwise 数据输出（DPO）
+
+```
+<prefix>_packed_chosen_input_ids_document.bin / .idx
+<prefix>_packed_chosen_labels_document.bin / .idx
+<prefix>_packed_rejected_input_ids_document.bin / .idx
+<prefix>_packed_rejected_labels_document.bin / .idx
+```
+
 ### 预训练数据输出
 
 ```
 <prefix>_text_document.bin / .idx
 ```
+
+> **注意**：预训练 `--data-path` 需包含 `_text_document` 后缀（如 `./dataset/data_text_document`），微调则使用前缀即可。
 
 ## 数据路径约定
 

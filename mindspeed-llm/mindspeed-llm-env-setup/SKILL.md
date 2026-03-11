@@ -33,13 +33,13 @@ MindSpeed-LLM (Huawei)   ← 应用层：训练脚本、数据预处理、权重
 6 步完成环境搭建：
 
 ```bash
-# 1. 激活 CANN 环境
-source /usr/local/Ascend/ascend-toolkit/set_env.sh
+# 1. 激活 CANN 环境（CANN 8.5.0+ 路径；旧版用 /usr/local/Ascend/ascend-toolkit/set_env.sh）
+source /usr/local/Ascend/cann/set_env.sh
 source /usr/local/Ascend/nnal/atb/set_env.sh
 
 # 2. 安装 PyTorch + torch_npu
 pip install torch==2.7.1 --index-url https://download.pytorch.org/whl/cpu
-pip install torch_npu==2.7.1
+pip install torch_npu==2.7.1rc1
 pip install numpy pyyaml scipy attrs decorator psutil
 
 # 3. 克隆并安装 MindSpeed
@@ -67,13 +67,10 @@ print(f'NPU ready: {torch.npu.is_available()}')
 
 | CANN | PyTorch | torch_npu | Python | Megatron-LM |
 |------|---------|-----------|--------|-------------|
-| 8.5.0 | 2.7.1 | 2.7.1 | 3.10-3.11 | core_v0.12.1 |
-| 8.3.RC1 | 2.6.0 | 2.6.0.post3 | 3.9-3.11 | core_v0.8.0 |
-| 8.0.RC3 | 2.5.1 | 2.5.1 | 3.9-3.11 | core_v0.8.0 |
-| 8.0.RC2 | 2.4.0 | 2.4.0 | 3.8-3.11 | core_v0.6.0 |
-| 8.0.RC1 | 2.1.0 | 2.1.0.post8 | 3.8-3.10 | core_r0.6.0 |
+| 8.5.0 | 2.7.1 | 2.7.1rc1 | 3.10 | core_v0.12.1 |
 
-> 使用 `cat /usr/local/Ascend/ascend-toolkit/latest/aarch64-linux/ascend_toolkit_install.info` 检查 CANN 版本。
+> 以上为当前 master 分支版本。历史版本请查阅 [官方安装文档](https://gitcode.com/ascend/MindSpeed-LLM/blob/master/docs/zh/install_guide.md)。
+> 检查 CANN 版本：`cat /usr/local/Ascend/cann/latest/aarch64-linux/ascend_toolkit_install.info`（CANN 8.5.0+）或 `cat /usr/local/Ascend/ascend-toolkit/latest/aarch64-linux/ascend_toolkit_install.info`（旧版）。
 
 ## Docker 容器创建
 
@@ -96,7 +93,7 @@ docker run -it --name mindspeed-llm \
     -v /usr/local/Ascend/driver/version.info:/usr/local/Ascend/driver/version.info \
     -v /usr/local/sbin/npu-smi:/usr/local/sbin/npu-smi \
     -v /home/workspace:/home/workspace \
-    swr.cn-south-1.myhuaweicloud.com/ascendhub/cann:8.5.0-910b-ubuntu22.04-py3.11 \
+    swr.cn-south-1.myhuaweicloud.com/ascendhub/cann:8.5.0-910b-ubuntu22.04-py3.10 \
     bash
 ```
 
@@ -128,8 +125,8 @@ workspace/
 |--------|------|----------|
 | CANN 环境 | `npu-smi info` | 显示 NPU 设备信息 |
 | PyTorch | `python -c "import torch; print(torch.__version__)"` | `2.7.1` |
-| torch_npu | `python -c "import torch_npu; print(torch_npu.__version__)"` | `2.7.1` |
-| NPU 数量 | `python -c "import torch_npu; print(torch_npu.npu.device_count())"` | `8`（8 卡环境） |
+| torch_npu | `python -c "import torch_npu; print(torch_npu.__version__)"` | `2.7.1rc1` |
+| NPU 数量 | `python -c "import torch_npu; print(torch_npu.npu.device_count())"` | ≥1（与硬件一致） |
 | MindSpeed | `pip show mindspeed` | 显示包信息 |
 | megatron 模块 | `ls MindSpeed-LLM/megatron/` | 目录存在且非空 |
 

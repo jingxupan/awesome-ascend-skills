@@ -121,16 +121,19 @@ bash examples/mcore/qwen25/pretrain_qwen25_7b_32k_ptd.sh
 --finetune                    # 启用微调模式
 --stage sft                   # 监督微调阶段
 --is-instruction-dataset      # 使用 packed 指令数据加载器
---prompt-type qwen            # 对话模板（qwen, llama3, chatglm4 等）
+--prompt-type qwen            # 对话模板（qwen, qwen3, llama3, glm4 等）
 --no-load-optim               # 不加载优化器状态
 --no-load-rng                 # 不加载随机数状态
+--no-pad-to-seq-lengths       # 不填充到 seq-length（节省计算）
+--reset-attention-mask        # 打包数据需重置注意力掩码
+--enable-thinking             # Qwen3 思维链模式（需配合 --prompt-type qwen3）
 ```
 
 ### LoRA 参数
 
 ```bash
 --lora-r 8                    # LoRA 秩（典型：8-16）
---lora-alpha 16               # LoRA 缩放因子
+--lora-alpha 16               # LoRA 缩放因子（推荐 α/r ≈ 2）
 --lora-fusion                 # 启用 CCLoRA（计算通信重叠）
 --lora-target-modules linear_qkv linear_proj linear_fc1 linear_fc2
 ```
@@ -145,6 +148,8 @@ bash examples/mcore/qwen25/pretrain_qwen25_7b_32k_ptd.sh
 ```
 
 > QLoRA 使用 4-bit 量化基础模型 + LoRA 适配器，显著减少显存占用。
+> **前提**：QLoRA 训练前，权重转换（HF→MG）时须加 `--qlora-nf4` 生成 NF4 量化权重。
+> **注意**：QLoRA 不支持 `--lora-fusion`，开启无性能收益。
 
 ## 训练启动脚本模板
 
@@ -204,8 +209,10 @@ torchrun $DISTRIBUTED_ARGS posttrain_gpt.py \
 ```bash
 torchrun $DISTRIBUTED_ARGS posttrain_gpt.py \
     --stage dpo \
-    --dpo-beta 0.1 \
+    --is-pairwise-dataset \
     --is-instruction-dataset \
+    --dpo-beta 0.1 \
+    --dpo-loss-type sigmoid \
     --data-path ./dataset/pairwise_data \
     # ... 其他参数同 SFT
 ```
@@ -270,7 +277,6 @@ NNODES=2 NODE_RANK=1 MASTER_ADDR=192.168.1.100 torchrun ...
 - [mindspeed-llm-env-setup](../mindspeed-llm-env-setup/SKILL.md) - 环境搭建
 - [mindspeed-llm-data-prep](../mindspeed-llm-data-prep/SKILL.md) - 数据预处理
 - [mindspeed-llm-weight-prep](../mindspeed-llm-weight-prep/SKILL.md) - 权重转换
-- [vllm-ascend](../../vllm-ascend/SKILL.md) - 训练完成后的推理部署
 - [hccl-test](../../hccl-test/SKILL.md) - 多卡通信测试
 
 ## 参考资源

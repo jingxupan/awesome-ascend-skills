@@ -54,7 +54,8 @@
 
 ```json
 {
-    "instruction": "解释什么是深度学习",
+    "system": "You are a helpful assistant.",
+    "question": "解释什么是深度学习",
     "chosen": "深度学习是机器学习的一个子领域，它使用多层神经网络来学习数据的层次化表示...",
     "rejected": "深度学习就是让计算机学习。"
 }
@@ -62,9 +63,14 @@
 
 | 字段 | 必需 | 说明 |
 |------|------|------|
-| `instruction` | 是 | 指令/问题 |
+| `question` | 是 | 指令/问题（通过 `--map-keys` 映射） |
+| `system` | 否 | 系统提示（通过 `--map-keys` 映射） |
+
+> 完整 map-keys 示例：`--map-keys '{"prompt":"question", "query":"", "system":"system"}'`
 | `chosen` | 是 | 偏好的回复 |
 | `rejected` | 是 | 不偏好的回复 |
+
+> Pairwise 数据输出为 8 个文件：`chosen_input_ids`、`chosen_labels`、`rejected_input_ids`、`rejected_labels`（各含 `.bin` + `.idx`）。
 
 ## 预训练数据格式
 
@@ -81,6 +87,9 @@
 | JSON Lines | `.jsonl` | 每行一个 JSON 对象 |
 | JSON Array | `.json` | 整个文件是一个 JSON 数组 |
 | Parquet | `.parquet` | Apache Parquet 列式格式 |
+| CSV | `.csv` | 逗号分隔值 |
+| Text | `.txt` | 纯文本 |
+| Arrow | `.arrow` | Apache Arrow 格式 |
 
 ## 高级预处理选项
 

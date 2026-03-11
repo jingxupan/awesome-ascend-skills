@@ -86,6 +86,7 @@ torchrun $DISTRIBUTED_ARGS posttrain_gpt.py \
     --finetune \
     --stage dpo \
     --is-pairwise-dataset \
+    --is-instruction-dataset \
     --dpo-beta 0.1 \
     --dpo-loss-type sigmoid \
     --prompt-type qwen \
@@ -109,7 +110,7 @@ torchrun $DISTRIBUTED_ARGS posttrain_gpt.py \
 ### Qwen2.5-7B
 
 ```bash
---num-layers 32 \
+--num-layers 28 \
 --hidden-size 3584 \
 --ffn-hidden-size 18944 \
 --num-attention-heads 28 \
@@ -142,7 +143,6 @@ torchrun $DISTRIBUTED_ARGS posttrain_gpt.py \
 --norm-epsilon 1e-6 \
 --swiglu \
 --group-query-attention \
---add-qkv-bias \
 --disable-bias-linear \
 --untie-embeddings-and-output-weights \
 --position-embedding-type rope \
@@ -189,7 +189,9 @@ torchrun $DISTRIBUTED_ARGS posttrain_gpt.py \
 --position-embedding-type rope
 ```
 
-## LoRA 合并 + 导出流水线
+## LoRA 合并 + 导出流水线（仅 v1）
+
+> **注意**：LoRA 权重合并仅支持 v1（`convert_ckpt.py`）。v2（`convert_ckpt_v2.py`）不支持 LoRA 权重转换。
 
 训练完成后将 LoRA 权重合并回基础模型并导出 HF 格式：
 
