@@ -1,6 +1,10 @@
 
 
+
+
 # Profiling 性能分析 Agent (下发 / 通信 / 算子瓶颈分析)
+
+performance_analyze主要用于针对profiling文件进行性能分析，识别下发、通信、计算瓶颈。
 
 ## 1. Skill 基本信息
 
@@ -18,7 +22,7 @@
 
 该 Skill 通过解析 Profiling 生成的`step_trace_time.csv`文件，提取`Computing`、`Communication(Not Overlapped)`、`Free`三个核心字段，计算各阶段耗时占比，并根据阈值自动判定性能瓶颈类型，触发对应子分析流程：
 
-**下发问题**：Free 耗时占比 > 20% → 触发 hostbound_analysis_skill.md 分析
+**下发问题**：Free 耗时占比 > 10% → 触发 hostbound_analysis_skill.md 分析
 
 **通信问题**：通信耗时占比 > 10% → 触发 communication_analysis_skill.md 分析
 
@@ -26,24 +30,13 @@
 
 支持多文件夹下`step_trace_time.csv`的批量扫描与独立分析。
 
-### 2.2 输入输出
+### 2.2 输入
 
 **输入参数**
 
 | 参数名称   | 类型   | 是否必填 | 描述                                                         |
 | ---------- | ------ | -------- | ------------------------------------------------------------ |
 | input_path | string | 是       | 输入路径：支持单个`step_trace_time.csv`文件路径，或包含多个该文件的文件夹路径 |
-
-**输出参数**
-
-| 参数名称        | 类型   | 描述                                                         |
-| --------------- | ------ | ------------------------------------------------------------ |
-| analysis_result | object | 完整性能分析结果：包含耗时指标、瓶颈类型、后续技能路径等核心信息 |
-| bottleneck_type | string | 识别到的瓶颈类型：可选值为`hostbound`（下发问题）、`computing`（计算 / 算子问题）、`communication`（通信问题）、`normal`（无明显瓶颈） |
-| next_skill      | string | 后续分析技能文档路径：匹配`Hostbound_skill.md`、`Computing_skill.md`、`Communication_skill.md`或空（正常状态） |
-| metrics         | object | 耗时占比指标：包含`computing_ratio`（计算耗时占比）、`communication_ratio`（通信耗时占比）、`free_ratio`（空闲耗时占比） |
-| file_count      | int    | 实际分析的`step_trace_time.csv`文件数量                      |
-| message         | string | 人类可读的分析结论描述                                       |
 
 ## 3. 实现步骤
 
@@ -83,40 +76,67 @@
 
 #### 输入
 
+1、把路径改成你的文件夹
+
 ```
-{
-  "input_path": "/home/user/profiling_results"
-}
+TARGET_FOLDER = r"D:\your\folder\path"
 ```
+
+2、直接运行
+
+```
+python performance_analyze.py
+```
+
+
 
 #### 输出
 
-```
-{
-  "skill_name": "profiling-performance-bottleneck-analysis",
-  "status": "success",
-  "file_count": 3,
-  "metrics": {
-    "computing_ratio": 72.8,
-    "communication_ratio": 6.5,
-    "free_ratio": 20.7
-  },
-  "bottleneck_type": "scheduling",
-  "next_skill": "Hostbound_skill.md",
-  "message": "性能分析结果：计算耗时占比=72.8%，通信耗时占比=6.5%，空闲耗时占比=20.7%。 空闲耗时占比超过20%，判定为下发问题，请参考Hostbound_skill.md进行分析。"
-}
-```
+--------------------------------------------------------------------------------
+
+正在分析：./log/step_trace_time.csv
+
+计算占比：92.50%
+
+通信占比：5.20%
+
+空闲占比：2.30%
+
+--------------------------------------------------------------------------------
+
+================================================================================ 
+
+📊 最终分析结论
+
+ ================================================================================ 
+
+平均计算耗时：92.5%
+
+平均通信耗时：5.2%
+
+平均空闲耗时：2.3%
+
+结论：
+
+计算占比超过85% → 判定为【计算问题】
+
+请参考分析文档：Computing_skill.md 
+
+================================================================================
+
+各项耗时占比 最高文件
+
+-------------------------------------------------------------------------------
+
+【空闲 Free 最高】25.30% → ./log/worker1/step_trace_time.csv 
+
+【计算 Computing 最高】94.50% → ./log/worker3/step_trace_time.csv 
+
+【通信 Communication 最高】15.20% → ./log/worker2/step_trace_time.csv
 
 
 
-## 4. 依赖说明
-
-1. 运行环境：Python 3.8 及以上版本
-2. 第三方库：
-   - pandas >= 1.3.0（用于 CSV 文件解析与数据计算）
-   - numpy >= 1.21.0（用于多文件指标均值计算）
-
-## 5. 注意事项
+## 4. 注意事项
 
 1. 输入路径支持绝对路径和相对路径，既支持单文件直接解析，也支持文件夹批量解析
 2. 多文件分析时采用**均值计算**，避免单文件异常数据导致整体判定偏差

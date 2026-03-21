@@ -1,182 +1,125 @@
 import os
 import pandas as pd
-import numpy as np
-from typing import Dict, List, Union
 
-class ProfilingPerformanceSkill:
-    def __init__(self):
-        self.skill_name = "profiling-performance-bottleneck-analysis"
-        self.target_file = "step_trace_time.csv"  # 目标解析文件名
-        self.required_cols = ["Computing", "Communication(Not Overlapped)", "Free"]  # 核心必填字段
+def analyze_performance(input_folder):
+    """
+    从指定文件夹下查找所有 step_trace_time.csv，分析耗时占比，并判断瓶颈类型
+    新增：展示 free / computing / communication 各自占比最高的文件
+    """
+    # 1. 查找所有 step_trace_time.csv 文件（递归查找）
+    csv_files = []
+    for root, dirs, files in os.walk(input_folder):
+        for file in files:
+            if file == "step_trace_time.csv":
+                csv_files.append(os.path.join(root, file))
 
-    def find_csv_files(self, input_path: str) -> List[str]:
-        """
-        从输入路径中检索所有step_trace_time.csv文件
-        :param input_path: 输入路径（文件/文件夹）
-        :return: 目标文件路径列表
-        """
-        csv_files = []
-        # 校验输入路径是否存在
-        if not os.path.exists(input_path):
-            raise FileNotFoundError(f"输入路径不存在：{input_path}")
+    if not csv_files:
+        print("❌ 未找到任何 step_trace_time.csv 文件")
+        return
 
-        # 单文件场景
-        if os.path.isfile(input_path):
-            if os.path.basename(input_path) == self.target_file:
-                csv_files.append(input_path)
-        # 文件夹场景（递归检索）
-        else:
-            for root, _, files in os.walk(input_path):
-                for file in files:
-                    if file == self.target_file:
-                        csv_files.append(os.path.join(root, file))
+    print(f"✅ 找到 {len(csv_files)} 个目标文件")
+    print("-" * 100)
 
-        # 无目标文件场景
-        if not csv_files:
-            raise FileNotFoundError(f"路径中未找到{self.target_file}文件：{input_path}")
-        return csv_files
+    # 存储所有文件的分析结果
+    file_results = []
 
-    def analyze_single_file(self, file_path: str) -> Dict[str, float]:
-        """
-        解析单个step_trace_time.csv文件，计算耗时占比
-        :param file_path: 单个文件路径
-        :return: 该文件的耗时占比（计算、通信、空闲）
-        """
-        # 读取CSV文件
+    # 2. 逐个分析文件
+    for file_path in csv_files:
+        print(f"正在分析：{file_path}")
+
         try:
             df = pd.read_csv(file_path)
         except Exception as e:
-            raise RuntimeError(f"读取文件失败{file_path}：{str(e)}")
+            print(f"⚠️  读取失败：{e}")
+            continue
 
-        # 校验核心字段
-        missing_cols = [col for col in self.required_cols if col not in df.columns]
-        if missing_cols:
-            raise ValueError(f"文件缺失核心字段：{', '.join(missing_cols)}，路径：{file_path}")
+        # 检查必须字段
+        required_cols = ["Computing", "Communication(Not Overlapped)", "Free"]
+        missing = [c for c in required_cols if c not in df.columns]
+        if missing:
+            print(f"⚠️  缺失字段：{missing}，跳过")
+            continue
 
-        # 计算各字段总耗时
-        computing_sum = df["Computing"].sum()
-        communication_sum = df["Communication(Not Overlapped)"].sum()
+        # 计算总和
+        compute_sum = df["Computing"].sum()
+        comm_sum = df["Communication(Not Overlapped)"].sum()
         free_sum = df["Free"].sum()
-        total_time = computing_sum + communication_sum + free_sum
+        total = compute_sum + comm_sum + free_sum
 
-        # 避免除零错误
-        if total_time <= 0:
-            return {"computing_ratio": 0.0, "communication_ratio": 0.0, "free_ratio": 0.0}
+        if total <= 0:
+            print("⚠️  总耗时为0，跳过")
+            continue
 
-        # 计算占比并保留2位小数
-        computing_ratio = round((computing_sum / total_time) * 100, 2)
-        communication_ratio = round((communication_sum / total_time) * 100, 2)
-        free_ratio = round((free_sum / total_time) * 100, 2)
+        # 计算占比
+        compute_ratio = round(compute_sum / total * 100, 2)
+        comm_ratio = round(comm_sum / total * 100, 2)
+        free_ratio = round(free_sum / total * 100, 2)
 
-        return {
-            "computing_ratio": computing_ratio,
-            "communication_ratio": communication_ratio,
-            "free_ratio": free_ratio
-        }
+        print(f"计算占比：{compute_ratio}%")
+        print(f"通信占比：{comm_ratio}%")
+        print(f"空闲占比：{free_ratio}%")
 
-    def execute(self, input_path: str) -> Dict:
-        """
-        技能核心执行入口
-        :param input_path: 输入路径（文件/文件夹）
-        :return: 分析结果字典
-        """
-        try:
-            # 步骤1：检索目标文件
-            csv_files = self.find_csv_files(input_path)
-            file_count = len(csv_files)
+        # 保存结果
+        file_results.append({
+            "path": file_path,
+            "computing": compute_ratio,
+            "communication": comm_ratio,
+            "free": free_ratio
+        })
 
-            # 步骤2：解析所有文件并收集耗时指标
-            all_metrics = []
-            for file in csv_files:
-                single_metrics = self.analyze_single_file(file)
-                all_metrics.append(single_metrics)
+        print("-" * 100)
 
-            # 步骤3：计算全局平均耗时占比
-            avg_computing = round(np.mean([m["computing_ratio"] for m in all_metrics]), 2)
-            avg_communication = round(np.mean([m["communication_ratio"] for m in all_metrics]), 2)
-            avg_free = round(np.mean([m["free_ratio"] for m in all_metrics]), 2)
-            avg_metrics = {
-                "computing_ratio": avg_computing,
-                "communication_ratio": avg_communication,
-                "free_ratio": avg_free
-            }
+    if not file_results:
+        print("❌ 没有可分析的有效数据")
+        return
 
-            # 步骤4：判定瓶颈类型与匹配后续技能
-            bottleneck_type = "normal"
-            next_skill = ""
-            if avg_free > 20:
-                bottleneck_type = "scheduling"
-                next_skill = "Hostbound_skill.md"
-            elif avg_computing > 85:
-                bottleneck_type = "computing"
-                next_skill = "Computing_skill.md"
-            elif avg_communication > 10:
-                bottleneck_type = "communication"
-                next_skill = "Communication_skill.md"
+    # ==================== 计算平均值 ====================
+    avg_compute = round(sum([f["computing"] for f in file_results]) / len(file_results), 2)
+    avg_comm = round(sum([f["communication"] for f in file_results]) / len(file_results), 2)
+    avg_free = round(sum([f["free"] for f in file_results]) / len(file_results), 2)
 
-            # 步骤5：生成分析结论
-            analysis_msg = self._generate_analysis_message(avg_metrics, bottleneck_type)
+    # ==================== 找出各项最大值（新增功能） ====================
+    max_free = max(file_results, key=lambda x: x["free"])
+    max_compute = max(file_results, key=lambda x: x["computing"])
+    max_comm = max(file_results, key=lambda x: x["communication"])
 
-            # 组装最终结果
-            return {
-                "skill_name": self.skill_name,
-                "status": "success",
-                "file_count": file_count,
-                "metrics": avg_metrics,
-                "bottleneck_type": bottleneck_type,
-                "next_skill": next_skill,
-                "message": analysis_msg
-            }
+    # ==================== 瓶颈判定 ====================
+    conclusion = ""
+    guide_file = ""
 
-        except Exception as e:
-            # 异常捕获与返回
-            return {
-                "skill_name": self.skill_name,
-                "status": "failed",
-                "error": str(e),
-                "bottleneck_type": "unknown",
-                "next_skill": "",
-                "message": f"分析失败：{str(e)}"
-            }
+    if avg_free > 20:
+        conclusion = "空闲占比超过20% → 判定为【下发问题】"
+        guide_file = "Hostbound_skill.md"
+    elif avg_compute > 85:
+        conclusion = "计算占比超过85% → 判定为【计算问题】"
+        guide_file = "Computing_skill.md"
+    elif avg_comm > 10:
+        conclusion = "通信占比超过10% → 判定为【通信问题】"
+        guide_file = "Communication_skill.md"
+    else:
+        conclusion = "无明显性能瓶颈，系统运行正常"
+        guide_file = "无"
 
-    def _generate_analysis_message(self, metrics: Dict[str, float], bottleneck_type: str) -> str:
-        """
-        生成人类可读的分析结论描述
-        :param metrics: 平均耗时占比
-        :param bottleneck_type: 瓶颈类型
-        :return: 分析结论字符串
-        """
-        base_msg = (f"性能分析结果：计算耗时占比={metrics['computing_ratio']}%，"
-                    f"通信耗时占比={metrics['communication_ratio']}%，"
-                    f"空闲耗时占比={metrics['free_ratio']}%。")
+    # ==================== 最终打屏展示 ====================
+    print("\n" + "=" * 100)
+    print("📊 整体分析结论")
+    print("=" * 100)
+    print(f"平均计算耗时：{avg_compute}%")
+    print(f"平均通信耗时：{avg_comm}%")
+    print(f"平均空闲耗时：{avg_free}%")
 
-        if bottleneck_type == "scheduling":
-            return f"{base_msg} 空闲耗时占比超过20%，判定为下发问题，请参考Hostbound_skill.md进行分析。"
-        elif bottleneck_type == "computing":
-            return f"{base_msg} 计算耗时占比超过85%，判定为计算/算子问题，请参考Computing_skill.md进行分析。"
-        elif bottleneck_type == "communication":
-            return f"{base_msg} 通信耗时占比超过10%，判定为通信问题，请参考Communication_skill.md进行分析。"
-        else:
-            return f"{base_msg} 未检测到明显性能瓶颈，系统运行正常。"
+    print("\n🔥 各项耗时占比 最高文件（新增）")
+    print("-" * 80)
+    print(f"【空闲 Free 最高】{max_free['free']}% → {max_free['path']}")
+    print(f"【计算 Computing 最高】{max_compute['computing']}% → {max_compute['path']}")
+    print(f"【通信 Communication 最高】{max_comm['communication']}% → {max_comm['path']}")
 
-# 技能入口函数（兼容Agent框架）
-def run_skill(input_params: Dict) -> Dict:
-    """
-    技能执行入口
-    :param input_params: 输入参数字典（需包含input_path）
-    :return: 技能执行结果
-    """
-    input_path = input_params.get("input_path")
-    if not input_path:
-        return {
-            "skill_name": "profiling-performance-bottleneck-analysis",
-            "status": "failed",
-            "error": "缺失必填参数：input_path",
-            "bottleneck_type": "unknown",
-            "next_skill": "",
-            "message": "分析失败：请传入有效的文件或文件夹路径"
-        }
+    print(f"\n结论：{conclusion}")
+    print(f"请参考优化文档：{guide_file}")
+    print("=" * 100)
 
-    # 初始化技能并执行
-    skill = ProfilingPerformanceSkill()
-    return skill.execute(input_path)
+# ==================== 运行入口 ====================
+if __name__ == "__main__":
+    # 在这里填入你要分析的文件夹路径
+    TARGET_FOLDER = r"./"
+    analyze_performance(TARGET_FOLDER)
